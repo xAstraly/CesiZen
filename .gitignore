@@ -31,6 +31,7 @@ yarn-error.*
 *.pem
 
 # local env files
+.env
 .env*.local
 
 # typescript
@@ -42,34 +43,5 @@ app-example
 /ios
 /android
 
-.env
-
-# Dépendances
-node_modules/
-
-# Dossiers spécifiques à Expo
-.expo/
-dist/
-web-build/
-
-# Fichiers de builds natifs (si tu utilises 'prebuild' ou 'eas build')
-ios/
-android/
-
-# Secrets et configuration locale
-.env
-.env.local
-*.jks
-*.p8
-*.p12
-*.key
-*.mobileprovision
-
-# Logs
-npm-debug.log*
-yarn-debug.log*
-yarn-error.log*
-
-# Système (Mac/Windows)
-.DS_Store
+# Système
 Thumbs.db
