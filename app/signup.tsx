@@ -1,9 +1,9 @@
 import { Text, View } from 'react-native';
 
-export default function Emotions() {
+export default function Respiration() {
   return (
     <View>
-      <Text>Mot de passe oublié</Text>
+      <Text>Page Inscription</Text>
     </View>
   );
 }

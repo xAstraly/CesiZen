@@ -24,12 +24,14 @@ export default function login() {
                     onChangeText={setPassword}
                     style={style.ChampFormulaire}
                 />
-                <TouchableOpacity onPress={() => router.push('/forgot-password')}>
-                    <Text style={[style.forgetPassword, { color: '#1a2060', textAlign: 'right', marginBottom: 16 }]}>Mot de passe oublié ?</Text>
-                </TouchableOpacity>
+                <Text style={[style.forgetPassword, { color: '#1a2060', textAlign: 'right', marginBottom: 16 }]} onPress={() => router.push('/forgot-password')}>
+                    Mot de passe oublié ?
+                </Text>
                 <TouchableOpacity style={style.BtnConnection}>
                     <Text style={style.BtnConnectionText}>Se connecter</Text>
                 </TouchableOpacity>
+                <Text style={{ textAlign: 'center', marginTop: 16 }}>Pas de compte ? <Text style={style.signUpLink} onPress={() => router.push('/signup')}>S'inscrire</Text></Text>
+
             </View>
         </View>
     );
@@ -89,5 +91,8 @@ const style = StyleSheet.create({
         textAlign: 'right',
         marginBottom: 16,
         },
-
+    signUpLink: {
+        color: '#1a2060',
+        fontWeight: '600',
+     },
 })
