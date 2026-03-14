@@ -1,4 +1,3 @@
-import MyHeader from '../components/header';
 
 import { Ionicons } from '@expo/vector-icons';
 import { StatusBar } from 'expo-status-bar';
@@ -11,6 +10,7 @@ const cards =[
   { titre: 'Gestion des émotions', description: 'Description de la gestion des émotions' },
 ]
 
+
 export default function App() {
   const { width, height } = useWindowDimensions();
   const isSmall = height < 700;
@@ -18,10 +18,12 @@ export default function App() {
   return (
     <SafeAreaProvider>
       <View style={styles.container}>
-        <MyHeader />
         <ScrollView contentContainerStyle={styles.scrollContent}>
           <View style={styles.home}>
-            <Text style={[styles.title, { fontSize: Math.min(width * 0.12, 72) }]}>CesiZen</Text>
+            <Text style={[styles.title]}>
+              <Text style={{ color: '#2d8c2d' }}>Cesi</Text>
+              <Text style={{ color: '#f0b429' }}>Zen</Text>
+            </Text>
             <Text style={[styles.subtitle, { fontSize: Math.min(width * 0.04, 20) }]}>l'application de votre santé mentale</Text>
             <Text style={[styles.subtitle, { fontSize: Math.min(width * 0.035, 16) }]}>Retrouvez des ressources pour gérer votre bien-être avec des articles et exercices</Text>
             {!isSmall && <Ionicons name="chevron-down" size={48} color="#1e5c1e" style={{ marginTop: 24 }} />}
@@ -63,6 +65,7 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
     color: '#333',
     marginBottom: 12,
+    fontSize: 50,
   },
   subtitle: {
     color: '#666',

@@ -1,4 +1,5 @@
 import { Ionicons } from '@expo/vector-icons';
+import { router } from 'expo-router';
 import React, { useState } from 'react';
 import { Image, Pressable, StyleSheet, Text, TouchableOpacity, useWindowDimensions, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -23,15 +24,20 @@ const MyHeader = () => {
   if (isDesktop) {
     return (
       <View style={[styles.DesktopHeader, { paddingTop: insets.top }]}>
-        <Image style={styles.logo} source={require('../assets/images/logo.png')} resizeMode="contain" />
-        <Pressable style={({ hovered, pressed }) => [styles.navLink,hovered && styles.navLinkHovered,]}>
+        <Pressable onPress={() => router.push('/')} style={({ hovered, pressed }) => [styles.navLink,hovered && styles.navLinkHovered,]}>
+          <Image style={styles.logo} source={require('../assets/images/logo.png')} resizeMode="contain" />
+        </Pressable>
+        <Pressable onPress={() => router.push('/articles')} style={({ hovered, pressed }) => [styles.navLink,hovered && styles.navLinkHovered,]}>
           <Text style={styles.navLinkText}>Articles</Text>
         </Pressable>
-        <Pressable style={({ hovered, pressed }) => [styles.navLink,hovered && styles.navLinkHovered,]}>
+        <Pressable onPress={() => router.push('/respiration')} style={({ hovered, pressed }) => [styles.navLink,hovered && styles.navLinkHovered,]}>
           <Text style={styles.navLinkText}>Respiration</Text>
         </Pressable>
-        <Pressable style={({ hovered, pressed }) => [styles.navLink,hovered && styles.navLinkHovered,]}>
+        <Pressable onPress={() => router.push('/emotions')} style={({ hovered, pressed }) => [styles.navLink,hovered && styles.navLinkHovered,]}>
           <Text style={styles.navLinkText}>Emotions</Text>
+        </Pressable>
+        <Pressable onPress={() => router.push('/login')} style={({ hovered, pressed }) => [styles.navLink,hovered && styles.navLinkHovered, { marginLeft: 'auto' }]}>
+          <Text style={styles.navLinkText}>Se connecter</Text>
         </Pressable>
       </View>
     );
@@ -53,17 +59,17 @@ const MyHeader = () => {
 
       {menuVisible && (
         <View style={styles.menu}>
-          <TouchableOpacity style={styles.menuItem} onPress={() => setMenuVisible(false)}>
+          <TouchableOpacity style={styles.menuItem} onPress={() => { router.push('/'); setMenuVisible(false); }}>
             <Text style={styles.menuItemText}>Accueil</Text>
           </TouchableOpacity>
-          <TouchableOpacity style={styles.menuItem} onPress={() => setMenuVisible(false)}>
+          <TouchableOpacity style={styles.menuItem} onPress={() => { router.push('/articles'); setMenuVisible(false); }}>
+            <Text style={styles.menuItemText}>Articles</Text>
+          </TouchableOpacity>
+          <TouchableOpacity style={styles.menuItem} onPress={() => { router.push('/respiration'); setMenuVisible(false); }}>
             <Text style={styles.menuItemText}>Respiration</Text>
           </TouchableOpacity>
-          <TouchableOpacity style={styles.menuItem} onPress={() => setMenuVisible(false)}>
+          <TouchableOpacity style={styles.menuItem} onPress={() => { router.push('/emotions'); setMenuVisible(false); }}>
             <Text style={styles.menuItemText}>Émotions</Text>
-          </TouchableOpacity>
-          <TouchableOpacity style={styles.menuItem} onPress={() => setMenuVisible(false)}>
-            <Text style={styles.menuItemText}>Articles</Text>
           </TouchableOpacity>
         </View>
       )}
@@ -106,7 +112,7 @@ const styles = StyleSheet.create({
   },
   hamburgerIcon: {
     color: '#1a2060',
-    fontSize: 28,
+    fontSize: 38,
   },
   profilButton: {
     position: 'absolute',
