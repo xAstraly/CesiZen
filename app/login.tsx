@@ -1,39 +1,85 @@
 
 import { router } from 'expo-router';
 import { useState } from 'react';
-import { StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
+import { KeyboardAvoidingView, Platform, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
 
-export default function login() {
+import { useAuth } from '@/context/AuthContext';
+import { API_URL } from '../constants/api';
+
+
+export default function LoginPage() {
     const [username, setUsername] = useState('');
     const [password, setPassword] = useState('');
+    const [error, setError] = useState('');
+    const { login } = useAuth();
+
+    const handleLogin = async () => {
+        console.log('handleLogin appelé !');
+        setError('');
+        try {
+            const response = await fetch(`${API_URL}/auth/login`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ email: username, password: password }),
+        });
+        const data = await response.json();
+
+            if (!response.ok) {
+                setError(data.message || 'Email ou mot de passe incorrect');
+                return;
+            }
+
+            await login(data.token, data.user);
+            router.push('/');
+            
+        } catch (err) {
+            setError('Impossible de contacter le serveur');
+        }
+        
+    };
+                
+
+
 
     return (
-        <View style={style.overlayFormulaire}>
-            <View style={style.card}>
-                <Text style={style.Titre}>Connexion</Text>
-                <TextInput
-                    placeholder="Nom d'utilisateur"
-                    value={username}
-                    onChangeText={setUsername}
-                    style={style.ChampFormulaire}
-                />
-                <TextInput
-                    placeholder="Mot de passe"
-                    secureTextEntry={true}
-                    value={password}
-                    onChangeText={setPassword}
-                    style={style.ChampFormulaire}
-                />
-                <Text style={[style.forgetPassword, { color: '#1a2060', textAlign: 'right', marginBottom: 16 }]} onPress={() => router.push('/forgot-password')}>
-                    Mot de passe oublié ?
-                </Text>
-                <TouchableOpacity style={style.BtnConnection}>
-                    <Text style={style.BtnConnectionText}>Se connecter</Text>
-                </TouchableOpacity>
-                <Text style={{ textAlign: 'center', marginTop: 16 }}>Pas de compte ? <Text style={style.signUpLink} onPress={() => router.push('/signup')}>S'inscrire</Text></Text>
+        <KeyboardAvoidingView 
+        style={{ flex: 1 }}
+        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+        >
+            <ScrollView contentContainerStyle={style.overlayFormulaire}>
+                <View style={style.card}>
+                    <Text style={style.Titre}>Connexion</Text>
+                    <TextInput
+                        placeholder="Nom d'utilisateur / Email"
+                        value={username}
+                        onChangeText={setUsername}
+                        style={style.ChampFormulaire}
+                    />
+                    <TextInput
+                        placeholder="Mot de passe"
+                        secureTextEntry={true}
+                        value={password}
+                        onChangeText={setPassword}
+                        style={style.ChampFormulaire}
+                    />
+                    <Text style={[style.forgetPassword, { color: '#1a2060', textAlign: 'right', marginBottom: 16 }]} onPress={() => router.push('/forgot-password')}>
+                        Mot de passe oublié ?
+                    </Text>
+                    {error ? <Text style={style.errorText}>{error}</Text> : null}
+                    <TouchableOpacity style={style.BtnConnection} onPress={handleLogin}>
+                        <Text style={style.BtnConnectionText}>Se connecter</Text>
+                    </TouchableOpacity>
+                    <Text style={{ textAlign: 'center', marginTop: 16 }}>Pas de compte ? <Text style={style.signUpLink} onPress={() => router.push('/signup')}>S'inscrire</Text></Text>
+                </View>
+            </ScrollView>
+        </KeyboardAvoidingView>
 
-            </View>
-        </View>
+
+
+
+        
+            
+        
     );
 }
 
@@ -85,14 +131,20 @@ const style = StyleSheet.create({
         fontSize: 16,
         fontWeight: '600',
     },
-        forgetPassword: {
+    forgetPassword: {
         fontSize: 14,
         color: '#1a2060',
         textAlign: 'right',
         marginBottom: 16,
-        },
+    },
     signUpLink: {
         color: '#1a2060',
         fontWeight: '600',
-     },
-})
+    },
+    errorText: {
+        color: '#c0392b',
+        fontSize: 14,
+        textAlign: 'center',
+        marginBottom: 12,
+    },
+});
