@@ -184,6 +184,7 @@ export default function Respiration() {
           </View>
         ))}
       </View>
+
     </ScrollView>
   );
 }

@@ -19,6 +19,10 @@ export default function AdminPanel() {
   const [editing, setEditing] = useState(null);
   const [form, setForm] = useState({ titre: '', contenu: '', categorie: '', lien: '' });
   const [submitting, setSubmitting] = useState(false);
+  const [categories, setCategories] = useState([]);
+  const [newCatName, setNewCatName] = useState('');
+  const [catSubmitting, setCatSubmitting] = useState(false);
+  const [catError, setCatError] = useState('');
 
   const load = () => {
     fetch(`${API_URL}/articles`)
@@ -27,7 +31,14 @@ export default function AdminPanel() {
       .catch(() => {});
   };
 
-  useEffect(() => { load(); }, []);
+  const loadCategories = () => {
+    fetch(`${API_URL}/articles/categories`)
+      .then((r) => r.json())
+      .then((data) => setCategories(data || []))
+      .catch(() => {});
+  };
+
+  useEffect(() => { load(); loadCategories(); }, []);
 
   // Protection accès (après les hooks)
   if (!user) return <Redirect href="/login" />;
@@ -98,9 +109,14 @@ export default function AdminPanel() {
       <Text style={styles.title}>Rédaction — Articles</Text>
 
       {user?.is_admin && (
-        <TouchableOpacity style={styles.btnOutline} onPress={() => router.push('/admin/users')}>
-          <Text style={styles.btnOutlineText}>Gérer les utilisateurs →</Text>
-        </TouchableOpacity>
+        <View style={styles.adminLinks}>
+          <TouchableOpacity style={styles.adminLink} onPress={() => router.push('/admin/users')}>
+            <Text style={styles.adminLinkText}>👥 Gérer les utilisateurs</Text>
+          </TouchableOpacity>
+          <TouchableOpacity style={styles.adminLink} onPress={() => router.push('/admin/stress-events')}>
+            <Text style={styles.adminLinkText}>📋 Événements de stress</Text>
+          </TouchableOpacity>
+        </View>
       )}
 
       {/* Formulaire */}
@@ -114,13 +130,18 @@ export default function AdminPanel() {
           value={form.titre}
           onChangeText={(v) => setForm({ ...form, titre: v })}
         />
-        <TextInput
-          style={styles.input}
-          placeholder="Catégorie (facultatif)"
-          placeholderTextColor="#aaa"
-          value={form.categorie}
-          onChangeText={(v) => setForm({ ...form, categorie: v })}
-        />
+        <Text style={styles.fieldLabel}>Catégorie</Text>
+        <View style={styles.chipRow}>
+          {categories.map((cat) => (
+            <TouchableOpacity
+              key={cat.id}
+              onPress={() => setForm({ ...form, categorie: form.categorie === cat.name ? '' : cat.name })}
+              style={[styles.chip, form.categorie === cat.name && styles.chipActive]}
+            >
+              <Text style={[styles.chipText, form.categorie === cat.name && styles.chipTextActive]}>{cat.name}</Text>
+            </TouchableOpacity>
+          ))}
+        </View>
         <TextInput
           style={styles.input}
           placeholder="Lien source (facultatif)"
@@ -159,6 +180,74 @@ export default function AdminPanel() {
         </View>
       </View>
 
+      {/* Gestion des catégories (admin uniquement) */}
+      {user?.is_admin && (
+        <View style={styles.formCard}>
+          <Text style={styles.formTitle}>Gérer les catégories</Text>
+
+          <View style={styles.catList}>
+            {categories.map((cat) => (
+              <View key={cat.id} style={styles.catRow}>
+                <Text style={styles.catName}>{cat.name}</Text>
+                <TouchableOpacity
+                  style={styles.catDeleteBtn}
+                  onPress={() => {
+                    const doDelete = async () => {
+                      await fetch(`${API_URL}/articles/categories/${cat.id}`, {
+                        method: 'DELETE',
+                        headers: { Authorization: `Bearer ${token}` },
+                      });
+                      if (form.categorie === cat.name) setForm({ ...form, categorie: '' });
+                      loadCategories();
+                    };
+                    if (Platform.OS === 'web') {
+                      if (window.confirm(`Supprimer la catégorie "${cat.name}" ?`)) doDelete();
+                    } else {
+                      Alert.alert('Supprimer', `Supprimer la catégorie "${cat.name}" ?`, [
+                        { text: 'Annuler', style: 'cancel' },
+                        { text: 'Supprimer', style: 'destructive', onPress: doDelete },
+                      ]);
+                    }
+                  }}
+                >
+                  <Text style={styles.catDeleteText}>✕</Text>
+                </TouchableOpacity>
+              </View>
+            ))}
+          </View>
+
+          <View style={styles.catAddRow}>
+            <TextInput
+              style={[styles.input, { flex: 1, marginBottom: 0 }]}
+              placeholder="Nouvelle catégorie..."
+              placeholderTextColor="#aaa"
+              value={newCatName}
+              onChangeText={(v) => { setNewCatName(v); setCatError(''); }}
+            />
+            <TouchableOpacity
+              style={[styles.btnPrimary, { paddingHorizontal: 16 }, catSubmitting && styles.btnDisabled]}
+              disabled={catSubmitting || !newCatName.trim()}
+              onPress={async () => {
+                setCatSubmitting(true);
+                setCatError('');
+                const res = await fetch(`${API_URL}/articles/categories`, {
+                  method: 'POST',
+                  headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+                  body: JSON.stringify({ name: newCatName.trim() }),
+                });
+                const data = await res.json();
+                if (!res.ok) { setCatError(data.message || 'Erreur'); }
+                else { setNewCatName(''); loadCategories(); }
+                setCatSubmitting(false);
+              }}
+            >
+              <Text style={styles.btnPrimaryText}>Ajouter</Text>
+            </TouchableOpacity>
+          </View>
+          {catError ? <Text style={styles.catError}>{catError}</Text> : null}
+        </View>
+      )}
+
       {/* Liste des articles */}
       <Text style={styles.sectionTitle}>Articles existants ({items.length})</Text>
       {items.length === 0 ? (
@@ -189,8 +278,15 @@ const styles = StyleSheet.create({
   container: { flexGrow: 1, backgroundColor: '#eef0f8', padding: 16, paddingBottom: 40 },
   title: { fontSize: 22, fontWeight: 'bold', color: '#000091', marginBottom: 16 },
 
-  btnOutline: { borderWidth: 1, borderColor: '#000091', borderRadius: 8, paddingVertical: 10, paddingHorizontal: 16, alignSelf: 'flex-start', marginBottom: 20 },
-  btnOutlineText: { color: '#000091', fontSize: 14, fontWeight: '600' },
+  adminLinks: { flexDirection: 'row', gap: 10, marginBottom: 20, flexWrap: 'wrap' },
+  adminLink: { borderWidth: 1, borderColor: '#000091', borderRadius: 8, paddingVertical: 10, paddingHorizontal: 14 },
+  adminLinkText: { color: '#000091', fontSize: 13, fontWeight: '600' },
+  fieldLabel: { fontSize: 13, fontWeight: '600', color: '#555', marginBottom: 6 },
+  chipRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginBottom: 10 },
+  chip: { paddingHorizontal: 12, paddingVertical: 6, borderRadius: 16, borderWidth: 1, borderColor: '#ccc', backgroundColor: '#fafafa' },
+  chipActive: { backgroundColor: '#000091', borderColor: '#000091' },
+  chipText: { fontSize: 13, color: '#555' },
+  chipTextActive: { color: '#fff', fontWeight: '600' },
 
   formCard: { backgroundColor: '#fff', borderRadius: 12, padding: 16, marginBottom: 24, elevation: 2, shadowColor: '#000', shadowOpacity: 0.06, shadowRadius: 8 },
   formTitle: { fontSize: 15, fontWeight: '700', color: '#333', marginBottom: 12 },
@@ -203,6 +299,13 @@ const styles = StyleSheet.create({
   btnCancel: { borderWidth: 1, borderColor: '#ccc', borderRadius: 8, paddingVertical: 11, paddingHorizontal: 16 },
   btnCancelText: { color: '#555', fontSize: 14 },
 
+  catList: { marginBottom: 12, gap: 6 },
+  catRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingVertical: 6, paddingHorizontal: 10, backgroundColor: '#f5f5f5', borderRadius: 6 },
+  catName: { fontSize: 14, color: '#333' },
+  catDeleteBtn: { padding: 4 },
+  catDeleteText: { color: '#c0392b', fontSize: 14, fontWeight: '700' },
+  catAddRow: { flexDirection: 'row', gap: 8, alignItems: 'center' },
+  catError: { color: '#c0392b', fontSize: 12, marginTop: 6 },
   sectionTitle: { fontSize: 15, fontWeight: '700', color: '#555', marginBottom: 10 },
   emptyText: { color: '#999', fontStyle: 'italic' },
   card: { backgroundColor: '#fff', borderRadius: 10, padding: 14, marginBottom: 10, borderLeftWidth: 3, borderLeftColor: '#1e5c1e', elevation: 1 },

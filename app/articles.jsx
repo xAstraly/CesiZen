@@ -14,20 +14,24 @@ import { API_URL } from '../constants/api';
 
 export default function ArticlesList() {
   const [items, setItems] = useState([]);
+  const [categories, setCategories] = useState([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
   const [selectedCategory, setSelectedCategory] = useState('');
   const [modalVisible, setModalVisible] = useState(false);
 
   useEffect(() => {
-    fetch(`${API_URL}/articles`)
-      .then((r) => r.json())
-      .then((data) => setItems(data || []))
-      .catch(() => setItems([]))
+    Promise.all([
+      fetch(`${API_URL}/articles`).then((r) => r.json()),
+      fetch(`${API_URL}/articles/categories`).then((r) => r.json()),
+    ])
+      .then(([articles, cats]) => {
+        setItems(articles || []);
+        setCategories((cats || []).map((c) => c.name));
+      })
+      .catch(() => { setItems([]); setCategories([]); })
       .finally(() => setLoading(false));
   }, []);
-
-  const categories = [...new Set(items.map((it) => it.categorie).filter(Boolean))];
 
   const filtered = items.filter((it) => {
     const matchSearch =

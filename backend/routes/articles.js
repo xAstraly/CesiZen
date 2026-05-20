@@ -16,6 +16,49 @@ router.get('/', async (req, res) => {
   }
 });
 
+// GET /articles/categories
+router.get('/categories', async (req, res) => {
+  try {
+    const result = await pool.query('SELECT * FROM article_categories ORDER BY name');
+    res.json(result.rows);
+  } catch (err) {
+    console.error('Erreur categories:', err.message);
+    res.status(500).json({ message: 'Erreur serveur' });
+  }
+});
+
+// POST /articles/categories (admin uniquement)
+router.post('/categories', authMiddleware, async (req, res) => {
+  const { name } = req.body;
+  if (!name?.trim()) return res.status(400).json({ message: 'Nom requis' });
+  try {
+    const userResult = await pool.query('SELECT is_admin FROM users WHERE id = $1', [req.user.id]);
+    if (!userResult.rows[0]?.is_admin) return res.status(403).json({ message: 'Accès refusé' });
+    const result = await pool.query(
+      'INSERT INTO article_categories (name) VALUES ($1) RETURNING *',
+      [name.trim()]
+    );
+    res.status(201).json(result.rows[0]);
+  } catch (err) {
+    if (err.code === '23505') return res.status(409).json({ message: 'Cette catégorie existe déjà' });
+    console.error('Erreur création catégorie:', err.message);
+    res.status(500).json({ message: 'Erreur serveur' });
+  }
+});
+
+// DELETE /articles/categories/:id (admin uniquement)
+router.delete('/categories/:id', authMiddleware, async (req, res) => {
+  try {
+    const userResult = await pool.query('SELECT is_admin FROM users WHERE id = $1', [req.user.id]);
+    if (!userResult.rows[0]?.is_admin) return res.status(403).json({ message: 'Accès refusé' });
+    await pool.query('DELETE FROM article_categories WHERE id = $1', [req.params.id]);
+    res.json({ message: 'Catégorie supprimée' });
+  } catch (err) {
+    console.error('Erreur suppression catégorie:', err.message);
+    res.status(500).json({ message: 'Erreur serveur' });
+  }
+});
+
 // GET /articles/:id
 router.get('/:id', async (req, res) => {
   try {

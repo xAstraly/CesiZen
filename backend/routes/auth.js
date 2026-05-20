@@ -2,6 +2,8 @@ const express = require('express');
 const router = express.Router();
 const bcrypt = require('bcrypt');
 const jwt = require('jsonwebtoken');
+const speakeasy = require('speakeasy');
+const QRCode = require('qrcode');
 const pool = require('../db');
 const authMiddleware = require('../middleware/auth');
 
@@ -30,6 +32,15 @@ router.post('/login', async (req, res) => {
       return res.status(403).json({ message: 'Ce compte a été désactivé.' });
     }
 
+    if (user.totp_enabled && user.totp_secret) {
+      const tempToken = jwt.sign(
+        { id: user.id, type: '2fa_pending' },
+        process.env.JWT_SECRET,
+        { expiresIn: '5m' }
+      );
+      return res.json({ requires_2fa: true, temp_token: tempToken });
+    }
+
     const token = jwt.sign(
       { id: user.id, email: user.email, is_admin: user.is_admin, is_writer: user.is_writer },
       process.env.JWT_SECRET,
@@ -49,6 +60,124 @@ router.post('/login', async (req, res) => {
     });
   } catch (err) {
     console.error('Erreur login:', err.message);
+    res.status(500).json({ message: 'Erreur serveur' });
+  }
+});
+
+// POST /auth/2fa/verify-login
+router.post('/2fa/verify-login', async (req, res) => {
+  const { temp_token, code } = req.body;
+  if (!temp_token || !code) {
+    return res.status(400).json({ message: 'Token temporaire et code requis' });
+  }
+  try {
+    const decoded = jwt.verify(temp_token, process.env.JWT_SECRET);
+    if (decoded.type !== '2fa_pending') {
+      return res.status(401).json({ message: 'Token invalide' });
+    }
+    const result = await pool.query('SELECT * FROM users WHERE id = $1', [decoded.id]);
+    const user = result.rows[0];
+    if (!user) return res.status(401).json({ message: 'Utilisateur introuvable' });
+
+    const valid = speakeasy.totp.verify({
+      secret: user.totp_secret,
+      encoding: 'base32',
+      token: code,
+      window: 1,
+    });
+    if (!valid) return res.status(401).json({ message: 'Code invalide ou expiré' });
+
+    const token = jwt.sign(
+      { id: user.id, email: user.email, is_admin: user.is_admin, is_writer: user.is_writer },
+      process.env.JWT_SECRET,
+      { expiresIn: '7d' }
+    );
+    res.json({
+      token,
+      user: {
+        id: user.id,
+        email: user.email,
+        prenom: user.prenom,
+        nom: user.nom,
+        is_admin: user.is_admin,
+        is_writer: user.is_writer,
+      },
+    });
+  } catch (err) {
+    console.error('Erreur 2fa verify-login:', err.message);
+    res.status(401).json({ message: 'Token expiré ou invalide' });
+  }
+});
+
+// POST /auth/2fa/setup
+router.post('/2fa/setup', authMiddleware, async (req, res) => {
+  try {
+    const result = await pool.query('SELECT email FROM users WHERE id = $1', [req.user.id]);
+    const user = result.rows[0];
+    const secret = speakeasy.generateSecret({ name: `CESIZen (${user.email})` });
+    await pool.query('UPDATE users SET totp_secret = $1, totp_enabled = false WHERE id = $2', [secret.base32, req.user.id]);
+    const qr_code_url = await QRCode.toDataURL(secret.otpauth_url);
+    res.json({ qr_code_url });
+  } catch (err) {
+    console.error('Erreur 2fa setup:', err.message);
+    res.status(500).json({ message: 'Erreur serveur' });
+  }
+});
+
+// POST /auth/2fa/activate
+router.post('/2fa/activate', authMiddleware, async (req, res) => {
+  const { code } = req.body;
+  try {
+    const result = await pool.query('SELECT totp_secret FROM users WHERE id = $1', [req.user.id]);
+    const user = result.rows[0];
+    if (!user?.totp_secret) return res.status(400).json({ message: 'Lancez d\'abord la configuration' });
+
+    const valid = speakeasy.totp.verify({
+      secret: user.totp_secret,
+      encoding: 'base32',
+      token: code,
+      window: 1,
+    });
+    if (!valid) return res.status(401).json({ message: 'Code invalide. Vérifiez votre application.' });
+
+    await pool.query('UPDATE users SET totp_enabled = true WHERE id = $1', [req.user.id]);
+    res.json({ message: '2FA activé avec succès' });
+  } catch (err) {
+    console.error('Erreur 2fa activate:', err.message);
+    res.status(500).json({ message: 'Erreur serveur' });
+  }
+});
+
+// POST /auth/2fa/disable
+router.post('/2fa/disable', authMiddleware, async (req, res) => {
+  const { code } = req.body;
+  try {
+    const result = await pool.query('SELECT totp_secret FROM users WHERE id = $1', [req.user.id]);
+    const user = result.rows[0];
+    if (!user?.totp_secret) return res.status(400).json({ message: '2FA non configuré' });
+
+    const valid = speakeasy.totp.verify({
+      secret: user.totp_secret,
+      encoding: 'base32',
+      token: code,
+      window: 1,
+    });
+    if (!valid) return res.status(401).json({ message: 'Code invalide' });
+
+    await pool.query('UPDATE users SET totp_enabled = false, totp_secret = NULL WHERE id = $1', [req.user.id]);
+    res.json({ message: '2FA désactivé' });
+  } catch (err) {
+    console.error('Erreur 2fa disable:', err.message);
+    res.status(500).json({ message: 'Erreur serveur' });
+  }
+});
+
+// GET /auth/2fa/status
+router.get('/2fa/status', authMiddleware, async (req, res) => {
+  try {
+    const result = await pool.query('SELECT totp_enabled FROM users WHERE id = $1', [req.user.id]);
+    res.json({ totp_enabled: result.rows[0]?.totp_enabled || false });
+  } catch (err) {
     res.status(500).json({ message: 'Erreur serveur' });
   }
 });

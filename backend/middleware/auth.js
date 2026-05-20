@@ -9,6 +9,9 @@ module.exports = (req, res, next) => {
   const token = authHeader.split(' ')[1];
   try {
     const decoded = jwt.verify(token, process.env.JWT_SECRET);
+    if (decoded.type === '2fa_pending') {
+      return res.status(401).json({ message: 'Authentification incomplète' });
+    }
     req.user = decoded;
     next();
   } catch {

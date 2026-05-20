@@ -27,8 +27,8 @@ const MyFooter = () => {
 const styles = StyleSheet.create({
   footer: {
     backgroundColor: '#fff',
-    borderTopWidth: 3,
-    borderTopColor: '#000091',
+    borderTopWidth: 1,
+    borderTopColor: '#eee',
     paddingVertical: 14,
     paddingHorizontal: 20,
     alignItems: 'center',

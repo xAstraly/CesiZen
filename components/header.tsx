@@ -1,7 +1,7 @@
 import { useAuth } from '@/context/AuthContext';
 import { Ionicons } from '@expo/vector-icons';
 import { router, usePathname } from 'expo-router';
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { Image, Pressable, StyleSheet, Text, TouchableOpacity, useWindowDimensions, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
@@ -11,8 +11,12 @@ const MyHeader = () => {
   const isDesktop = width >= 768;
   const [menuVisible, setMenuVisible] = useState(false);
   const [menuVisibleProfil, setMenuVisibleProfil] = useState(false);
-  const { user, logout } = useAuth();
+  const { user, logout, refreshUser } = useAuth();
   const pathname = usePathname();
+
+  useEffect(() => {
+    refreshUser();
+  }, [pathname]);
 
   const isActive = (path: string) => pathname === path || pathname.startsWith(path + '/');
 
@@ -57,6 +61,11 @@ const MyHeader = () => {
         {user && (
           <Pressable onPress={() => router.push('/emotions')} style={navLinkStyle('/emotions')}>
             <Text style={[styles.navLinkText, isActive('/emotions') && styles.navLinkTextActive]}>Émotions</Text>
+          </Pressable>
+        )}
+        {user && (
+          <Pressable onPress={() => router.push('/detente' as any)} style={navLinkStyle('/detente')}>
+            <Text style={[styles.navLinkText, isActive('/detente') && styles.navLinkTextActive]}>Détente</Text>
           </Pressable>
         )}
 
@@ -134,6 +143,11 @@ const MyHeader = () => {
               <Text style={styles.menuItemText}>Émotions</Text>
             </TouchableOpacity>
           )}
+          {user && (
+            <TouchableOpacity style={[styles.menuItem, isActive('/detente') && styles.menuItemActive]} onPress={() => { router.push('/detente' as any); setMenuVisible(false); }}>
+              <Text style={styles.menuItemText}>Détente</Text>
+            </TouchableOpacity>
+          )}
           {user && (user.is_writer || user.is_admin) && (
             <TouchableOpacity style={[styles.menuItem, isActive('/admin') && styles.menuItemActive]} onPress={() => { router.push('/admin' as any); setMenuVisible(false); }}>
               <Text style={styles.menuItemText}>Rédaction</Text>
@@ -184,8 +198,10 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    borderBottomWidth: 2,
-    borderBottomColor: '#000091',
+    shadowColor: '#000',
+    shadowOpacity: 0.08,
+    shadowRadius: 8,
+    elevation: 3,
   },
   hamburgerButton: {
     position: 'absolute',
@@ -231,14 +247,16 @@ const styles = StyleSheet.create({
   },
   desktopHeader: {
     backgroundColor: '#ffffff',
-    borderBottomWidth: 2,
-    borderBottomColor: '#000091',
     paddingHorizontal: 24,
     paddingVertical: 0,
     minHeight: 70,
     flexDirection: 'row',
     alignItems: 'center',
     gap: 4,
+    shadowColor: '#000',
+    shadowOpacity: 0.08,
+    shadowRadius: 8,
+    elevation: 3,
   },
   authRow: {
     flexDirection: 'row',
