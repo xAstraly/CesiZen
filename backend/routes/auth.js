@@ -265,6 +265,63 @@ router.put('/password', authMiddleware, async (req, res) => {
   }
 });
 
+// POST /auth/forgot-password
+router.post('/forgot-password', async (req, res) => {
+  const { email } = req.body;
+  if (!email) return res.status(400).json({ message: 'Email requis' });
+  try {
+    const result = await pool.query('SELECT id FROM users WHERE email = $1', [email]);
+    if (!result.rows[0]) {
+      // Ne pas révéler si l'email existe
+      return res.json({ message: 'Si cet email existe, un code a été envoyé.' });
+    }
+    const code = Math.floor(100000 + Math.random() * 900000).toString();
+    const expires = new Date(Date.now() + 60 * 60 * 1000); // 1h
+    await pool.query(
+      'UPDATE users SET reset_token = $1, reset_expires = $2 WHERE id = $3',
+      [code, expires, result.rows[0].id]
+    );
+    // En production : envoyer code par email. Ici retourné pour le dev.
+    res.json({ message: 'Si cet email existe, un code a été envoyé.', dev_code: code });
+  } catch (err) {
+    console.error('Erreur forgot-password:', err.message);
+    res.status(500).json({ message: 'Erreur serveur' });
+  }
+});
+
+// POST /auth/reset-password
+router.post('/reset-password', async (req, res) => {
+  const { email, code, newPassword } = req.body;
+  if (!email || !code || !newPassword) {
+    return res.status(400).json({ message: 'Email, code et nouveau mot de passe requis' });
+  }
+  if (newPassword.length < 6) {
+    return res.status(400).json({ message: 'Le mot de passe doit contenir au moins 6 caractères' });
+  }
+  try {
+    const result = await pool.query(
+      'SELECT id, reset_token, reset_expires FROM users WHERE email = $1',
+      [email]
+    );
+    const user = result.rows[0];
+    if (!user || user.reset_token !== code) {
+      return res.status(400).json({ message: 'Code invalide' });
+    }
+    if (new Date() > new Date(user.reset_expires)) {
+      return res.status(400).json({ message: 'Ce code a expiré' });
+    }
+    const hashed = await bcrypt.hash(newPassword, 10);
+    await pool.query(
+      'UPDATE users SET password = $1, reset_token = NULL, reset_expires = NULL WHERE id = $2',
+      [hashed, user.id]
+    );
+    res.json({ message: 'Mot de passe réinitialisé avec succès' });
+  } catch (err) {
+    console.error('Erreur reset-password:', err.message);
+    res.status(500).json({ message: 'Erreur serveur' });
+  }
+});
+
 // DELETE /auth/account
 router.delete('/account', authMiddleware, async (req, res) => {
   try {
