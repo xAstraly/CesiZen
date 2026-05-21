@@ -8,6 +8,7 @@ import {
   StyleSheet,
   Switch,
   Text,
+  TextInput,
   TouchableOpacity,
   View,
 } from 'react-native';
@@ -16,6 +17,7 @@ import { API_URL } from '../../constants/api';
 export default function AdminUsers() {
   const { user, token } = useAuth();
   const [users, setUsers] = useState([]);
+  const [search, setSearch] = useState('');
   const [loading, setLoading] = useState(true);
   const [savedId, setSavedId] = useState(null);
   const savedTimer = useRef(null);
@@ -86,6 +88,13 @@ export default function AdminUsers() {
     );
   }
 
+  const q = search.trim().toLowerCase();
+  const filtered = q
+    ? users.filter((u) =>
+        `${u.prenom} ${u.nom} ${u.email}`.toLowerCase().includes(q)
+      )
+    : users;
+
   return (
     <ScrollView contentContainerStyle={styles.container}>
       <TouchableOpacity onPress={() => router.push('/admin')}>
@@ -95,7 +104,28 @@ export default function AdminUsers() {
       <Text style={styles.title}>Gestion des utilisateurs</Text>
       <Text style={styles.subtitle}>{users.length} utilisateur{users.length > 1 ? 's' : ''}</Text>
 
-      {users.map((u) => {
+      <View style={styles.searchRow}>
+        <TextInput
+          style={styles.searchInput}
+          placeholder="Rechercher par nom, prénom ou email…"
+          placeholderTextColor="#aaa"
+          value={search}
+          onChangeText={setSearch}
+          autoCapitalize="none"
+          clearButtonMode="while-editing"
+        />
+        {search.length > 0 && (
+          <TouchableOpacity style={styles.searchClear} onPress={() => setSearch('')}>
+            <Text style={styles.searchClearText}>✕</Text>
+          </TouchableOpacity>
+        )}
+      </View>
+
+      {filtered.length === 0 && (
+        <Text style={styles.emptyText}>Aucun utilisateur ne correspond à « {search} ».</Text>
+      )}
+
+      {filtered.map((u) => {
         const isSelf = u.id === user?.id;
         return (
           <View key={u.id} style={[styles.card, isSelf && styles.cardSelf]}>
@@ -201,4 +231,10 @@ const styles = StyleSheet.create({
   btnDelete: { backgroundColor: '#fdecea', borderRadius: 8, paddingVertical: 8, alignItems: 'center' },
   btnDeleteText: { color: '#c0392b', fontSize: 13, fontWeight: '600' },
   savedText: { color: '#1e7e34', fontSize: 13, fontWeight: '600', textAlign: 'center', marginBottom: 8 },
+
+  searchRow: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#fff', borderRadius: 10, borderWidth: 1, borderColor: '#ddd', paddingHorizontal: 12, marginBottom: 16 },
+  searchInput: { flex: 1, paddingVertical: 10, fontSize: 14, color: '#333' },
+  searchClear: { padding: 4 },
+  searchClearText: { color: '#aaa', fontSize: 16 },
+  emptyText: { color: '#999', fontStyle: 'italic', textAlign: 'center', marginBottom: 16 },
 });
